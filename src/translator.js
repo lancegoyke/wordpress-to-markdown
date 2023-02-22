@@ -48,11 +48,18 @@ function initTurndownService() {
 
   // preserve enlighter code blocks
   turndownService.addRule("enlighter", {
-    filter: (node) =>
-      node.nodeName === "PRE" && node.classList.contains("EnlighterJSRAW"),
+    filter: (node, options) => {
+      return (
+        options.codeBlockStyle === "fenced" &&
+        node.nodeName === "PRE" &&
+        node.firstChild &&
+        node.classList.contains("EnlighterJSRAW")
+      );
+    },
     replacement: (content, node) => {
       const language = node.getAttribute("data-enlighter-language") ?? "";
-      return "\n" + "```" + language + "\n" + content + "\n" + "```" + "\n";
+      const code = node.textContent;
+      return "\n" + "```" + language + "\n" + code + "\n" + "```" + "\n";
     },
   });
 
