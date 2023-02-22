@@ -63,6 +63,24 @@ function initTurndownService() {
     },
   });
 
+  // preserve SyntaxHighlighter Evolved code blocks
+  // this does not presever language information as it
+  // is stored in the wp block comment and not in the HTML
+  turndownService.addRule("syntaxhighlighter-evolved", {
+    filter: (node, options) => {
+      return (
+        options.codeBlockStyle === "fenced" &&
+        node.nodeName === "PRE" &&
+        node.firstChild &&
+        node.classList.contains("wp-block-syntaxhighlighter-code")
+      );
+    },
+    replacement: (content, node) => {
+      const code = node.textContent;
+      return "\n" + "```" + "\n" + code + "\n" + "```" + "\n";
+    },
+  });
+
   // preserve iframes (common for embedded audio/video)
   turndownService.addRule("iframe", {
     filter: "iframe",
