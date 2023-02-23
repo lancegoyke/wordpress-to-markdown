@@ -107,13 +107,21 @@ function getPostContent(post, turndownService, config) {
   if (config.saveScrapedImages) {
     // writeImageFile() will save all content images to a relative /images
     // folder so update references in post content to match
+    let assetsDir = "";
+    if (config.postFolders) {
+      // image is stored in a post folder (current directory)
+      assetsDir = ".";
+    } else {
+      // store in assets directory
+      assetsDir = "./" + config.assets;
+    }
     content = content.replace(
       /(<img[^>]*src=").*?([^\/"]+\.(?:gif|jpe?g|png|svg|webp))(.*?)("[^>]*>)/gi,
-      `$1${config.assets}/images/$2$4`
+      `$1${assetsDir}/images/$2$4`
     );
     content = content.replace(
       /(<a[^>]*href=").*?([^\/"]+\.(?:pdf))("[^>]*>)/gi,
-      `$1${config.assets}/$2$3`
+      `$1${assetsDir}/$2$3`
     );
   }
 
