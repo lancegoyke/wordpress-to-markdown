@@ -208,12 +208,18 @@ function getPostDate(post) {
 }
 
 function getPostModifiedDate(post) {
-  // assumed format: "2023-02-22 03:41:41"
-  const dateTime = luxon.DateTime.fromFormat(
-    post.post_modified_gmt[0],
-    "yyyy-MM-dd HH:mm:ss",
-    { zone: "utc" }
-  );
+  let dateTime = "";
+  if (!post.post_modified_gmt) {
+    // assume last modified time is the same as published time
+    dateTime = getPostDate(post);
+  } else {
+    // assumed format: "2023-02-22 03:41:41"
+    dateTime = luxon.DateTime.fromFormat(
+      post.post_modified_gmt[0],
+      "yyyy-MM-dd HH:mm:ss",
+      { zone: "utc" }
+    );
+  }
 
   if (settings.custom_date_formatting) {
     return dateTime.toFormat(settings.custom_date_formatting);
