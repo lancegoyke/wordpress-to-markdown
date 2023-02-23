@@ -1,5 +1,5 @@
 const fs = require("fs");
-const path = require("path")
+const path = require("path");
 const luxon = require("luxon");
 const xml2js = require("xml2js");
 
@@ -67,33 +67,39 @@ function collectPosts(data, postTypes, config) {
   let allPosts = [];
   postTypes.forEach((postType) => {
     //use slice before filter for testing smaller amounts
-    const postsForType = postType === "authors" 
-      ? collectAuthors(data)
-      : getItemsOfType(data, postType)
-        .filter(
-          (post) => post.status[0] !== "trash" && post.status[0] !== "draft"
-        )
-        .map((post) => ({
-          // meta data isn't written to file, but is used to help with other things
-          meta: {
-            id: getPostId(post),
-            slug: getPostSlug(post),
-            coverImageId: getPostCoverImageId(post),
-            type: postType,
-            imageUrls: [],
-          },
-          frontmatter: {
-            title: getPostTitle(post),
-            created: getPostDate(post),
-            categories: getCategories(post),
-            tags: getTags(post),
-            authors: getAuthors(post)
-          },
-          content: translator.getPostContent(post, turndownService, config),
-        }));
+    const postsForType =
+      postType === "authors"
+        ? collectAuthors(data)
+        : getItemsOfType(data, postType)
+            .filter(
+              (post) => post.status[0] !== "trash" && post.status[0] !== "draft"
+            )
+            .map((post) => ({
+              // meta data isn't written to file, but is used to help with other things
+              meta: {
+                id: getPostId(post),
+                slug: getPostSlug(post),
+                coverImageId: getPostCoverImageId(post),
+                type: postType,
+                imageUrls: [],
+              },
+              frontmatter: {
+                title: getPostTitle(post),
+                created: getPostDate(post),
+                modified: getPostModifiedDate(post),
+                categories: getCategories(post),
+                tags: getTags(post),
+                authors: getAuthors(post),
+              },
+              content: translator.getPostContent(post, turndownService, config),
+            }));
 
     if (postTypes.length > 1) {
-      console.log(`${postsForType.length} "${postType}" ${postType === "authors" ? "with" : ""} posts found.`);
+      console.log(
+        `${postsForType.length} "${postType}" ${
+          postType === "authors" ? "with" : ""
+        } posts found.`
+      );
     }
 
     allPosts.push(...postsForType);
@@ -130,60 +136,84 @@ function getPostTitle(post) {
   // if title has Html in it, return the post name instead
   const re = /^</;
   if (re.test(post.title[0])) {
-    const title = post.post_name[0].replace("-", " ")
+    const title = post.post_name[0].replace("-", " ");
     // capitalize each word
-    return title.replace(/(^\w|\s\w)(\S*)/g, (_,m1,m2) => m1.toUpperCase()+m2.toLowerCase());
+    return title.replace(
+      /(^\w|\s\w)(\S*)/g,
+      (_, m1, m2) => m1.toUpperCase() + m2.toLowerCase()
+    );
   } else {
     return post.title[0];
   }
 }
 
 function getAuthors(post) {
-  return post.creator[0].split(" and ").map(author => author.toLowerCase().replace(" ", "-"))
+  return post.creator[0]
+    .split(" and ")
+    .map((author) => author.toLowerCase().replace(" ", "-"));
 }
 
 function getAuthorsWithPosts(data) {
-  let authors = []
-  const authorList = data.rss.channel[0].author
+  let authors = [];
+  const authorList = data.rss.channel[0].author;
   const posts = data.rss.channel[0].item.filter(
-    (post) => post.status[0] !== "trash" && post.status[0] !== "draft" && post.post_type[0] !== "attachment"
-  )
-  authorList.map(author => {
-    const authorWithPost = posts.some(post => post.creator.includes(author['author_login'][0]))
-    if (authorWithPost) authors.push(author)
-  })
-  return authors
+    (post) =>
+      post.status[0] !== "trash" &&
+      post.status[0] !== "draft" &&
+      post.post_type[0] !== "attachment"
+  );
+  authorList.map((author) => {
+    const authorWithPost = posts.some((post) =>
+      post.creator.includes(author["author_login"][0])
+    );
+    if (authorWithPost) authors.push(author);
+  });
+  return authors;
 }
 
 function collectAuthors(data) {
-  const authors = getAuthorsWithPosts(data)
-    .map(author => {
-      const slug = author['author_login'][0].toLowerCase().replace(" ", "-")
-      const displayName = author['author_display_name'][0]
-      const firstName = author['author_first_name'][0]
-      const lastName = author['author_last_name'][0]
+  const authors = getAuthorsWithPosts(data).map((author) => {
+    const slug = author["author_login"][0].toLowerCase().replace(" ", "-");
+    const displayName = author["author_display_name"][0];
+    const firstName = author["author_first_name"][0];
+    const lastName = author["author_last_name"][0];
 
-      return ({
-        meta: {
-          id: slug,
-          slug: decodeURIComponent(slug),
-          type: "authors",
-          imageUrls: [],
-        },
-        frontmatter: {
-          id: slug,
-          name: firstName && lastName
-            ? `${firstName} ${lastName}`
-            : displayName
-        },
-      })
-    })
+    return {
+      meta: {
+        id: slug,
+        slug: decodeURIComponent(slug),
+        type: "authors",
+        imageUrls: [],
+      },
+      frontmatter: {
+        id: slug,
+        name: firstName && lastName ? `${firstName} ${lastName}` : displayName,
+      },
+    };
+  });
 
-  return authors
+  return authors;
 }
 
 function getPostDate(post) {
   const dateTime = luxon.DateTime.fromRFC2822(post.pubDate[0], { zone: "utc" });
+
+  if (settings.custom_date_formatting) {
+    return dateTime.toFormat(settings.custom_date_formatting);
+  } else if (settings.include_time_with_date) {
+    return dateTime.toISO();
+  } else {
+    return dateTime.toISODate();
+  }
+}
+
+function getPostModifiedDate(post) {
+  // assumed format: "2023-02-22 03:41:41"
+  const dateTime = luxon.DateTime.fromFormat(
+    post.post_modified_gmt[0],
+    "yyyy-MM-dd HH:mm:ss",
+    { zone: "utc" }
+  );
 
   if (settings.custom_date_formatting) {
     return dateTime.toFormat(settings.custom_date_formatting);
@@ -273,7 +303,11 @@ function mergeImagesIntoPosts(images, posts, config) {
       // this image was set as the featured image for this post
       if (image.id === post.meta.coverImageId) {
         shouldAttach = true;
-        post.frontmatter.image = path.join(`/${config.assets}`, "images", shared.getFilenameFromUrl(image.url));
+        post.frontmatter.image = path.join(
+          `/${config.assets}`,
+          "images",
+          shared.getFilenameFromUrl(image.url)
+        );
       }
 
       if (shouldAttach && !post.meta.imageUrls.includes(image.url)) {
